@@ -1,59 +1,61 @@
-<!doctype html>
-<html lang="ja">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>HD Action X Web Canvas Test</title>
+<!doctype html><html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>HD Action X v6.2 Excel 64 IDLE</title>
 <style>
-html,body{margin:0;background:#07111e;color:#fff;font-family:system-ui,-apple-system,sans-serif}
-main{max-width:900px;margin:auto;padding:16px}
-h1{font-size:20px;margin:0 0 4px}.note{font-size:13px;color:#cbd5e1;margin:0 0 12px}
-.controls{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
-button{font-size:15px;padding:9px 12px;border-radius:8px;border:1px solid #789;background:#1c334a;color:#fff}
-canvas{width:100%;height:auto;border:1px solid #456;border-radius:10px;display:block;image-rendering:pixelated}
-#status{font-size:13px;color:#9fe3b1;margin-top:8px}
-</style>
-</head>
-<body><main>
-<h1>HD Action X / Web Canvas Test</h1>
-<p class="note">外部PNG hero.png をHTTP(S)で読み込み、Canvasへ直接 drawImage。補間OFF。</p>
-<div class="controls">
-<button data-s=".22">ゲーム小</button>
-<button data-s=".35">ゲーム中</button>
-<button data-s=".50">ゲーム大</button>
-<button id="bg">背景切替</button>
-</div>
-<canvas id="game" width="900" height="600"></canvas>
-<div id="status">hero.png loading...</div>
+html,body{margin:0;background:#050914;color:#dffaff;font-family:system-ui}
+#w{max-width:980px;margin:auto}#viewport{overflow-x:auto}canvas{display:block;background:#101522;image-rendering:pixelated;margin:auto}#note{margin:4px 7px 9px;font-size:12px;color:#adbed0}
+#s{padding:7px;font:12px monospace}.ok{color:#85ffc5}.bad{color:#ff91a6}
+#b{display:flex;gap:6px;padding:6px;flex-wrap:wrap}.btn{border:1px solid #59dceb;border-radius:7px;padding:6px 9px;font:12px system-ui}
+</style></head><body><div id="w">
+<div id="s">64×64 IDLE 読込中...</div><div id="b"><span class="btn">FACTORY</span><span class="btn">ICE</span><span class="btn">FOREST</span><span class="btn">CORE</span><span class="btn">BOSS</span><span class="btn" id="motion">MOTION: IDLE 64</span></div>
+<div id="viewport"><canvas id="g" width="960" height="540"></canvas></div><p id="note">待機まばたき：64×64原画・2倍表示。ほかのモーションは従来素材。横向きでも確認できるよ。</p></div>
 <script>
-const c=document.getElementById('game'),ctx=c.getContext('2d');
-ctx.imageSmoothingEnabled=false;
-let scale=.35,bg=0;
-const img=new Image();
-img.src='./hero.png';
-
-function scene(){
-  const colors=['#10243b','#ffffff','#000000'];
-  ctx.fillStyle=colors[bg]; ctx.fillRect(0,0,c.width,c.height);
-  if(bg===0){
-    ctx.fillStyle='#263b4e';ctx.fillRect(0,500,c.width,100);
-    ctx.fillStyle='#4e7998';
-    for(let i=0;i<c.width;i+=72)ctx.fillRect(i,500,66,8);
-  }
+(()=>{"use strict";
+const c=document.getElementById("g"),ctx=c.getContext("2d"),s=document.getElementById("s");ctx.imageSmoothingEnabled=false;
+const F={factory:"stage_factory.png",ice:"stage_ice.png",forest:"stage_forest.png",core:"stage_core.png",arena:"boss_arena_v5.png",
+hero:"hero_run_approved.png",idle:"hero_idle_excel64.png",dash:"hero_dash_approved.png",shot:"hero_stand_shot_approved.png",soldier:"soldier.png",sa:"soldier_attack.png",sh:"soldier_hurt.png",drone:"drone.png",da:"drone_attack.png",
+crawler:"crawler.png",ca:"crawler_attack.png",boss:"flame_tank.png",bc:"flame_tank_charge.png",bh:"flame_tank_hurt.png",
+hud:"hud_v5.png",boom:"explosion_master.png",bossflame:"boss_flame_attack.png",
+metal:"trail_metal.png",crash:"trail_crash.png",shield:"trail_shield.png",arc:"trail_arc.png",cryo:"trail_cryo.png",
+phoenix:"trail_phoenix.png",gravity:"trail_gravity.png",photon:"trail_photon.png",light_factory:"light_factory.png",light_ice:"light_ice.png",light_forest:"light_forest.png",light_core:"light_core.png",light_boss:"light_boss.png",imp_metal:"impact10_metal.png",imp_crash:"impact10_crash.png",imp_shield:"impact10_shield.png",imp_arc:"impact10_arc.png",imp_cryo:"impact10_cryo.png",imp_phoenix:"impact10_phoenix.png",imp_gravity:"impact10_gravity.png",imp_photon:"impact10_photon.png",bcore:"boss_core_charge.png"};
+const I={};let n=0,bad=0,t=0,scene=0,keys=Object.keys(F);
+keys.forEach(k=>{let im=new Image();I[k]=im;im.onload=()=>{n++;s.textContent=`素材読込 ${n}/${keys.length}`;if(n+bad===keys.length)boot()};
+im.onerror=()=>{bad++;s.className="bad";s.textContent="LOAD ERROR "+F[k]};im.src="assets/"+F[k]});
+function sheet(im,count,fr,x,y,w,h){let fw=im.naturalWidth/count;ctx.drawImage(im,(fr%count)*fw,0,fw,im.naturalHeight,Math.round(x),Math.round(y),w,h)}
+document.querySelectorAll(".btn").forEach((e,i)=>{if(i<5)e.onclick=()=>scene=i});
+let motion=1;const motionNames=["RUN","IDLE 64","DASH","SHOT"];let idleStart=0,qaTime=null;
+const durations=[2400,60,80,60];
+function idleFrameAt(ms){let elapsed=((ms%2600)+2600)%2600;for(let i=0;i<durations.length;i++){if(elapsed<durations[i])return i;elapsed-=durations[i]}return 0}
+function sizeCanvas(){const dpr=window.devicePixelRatio||1;const physicalWidth=Math.floor(document.getElementById("viewport").clientWidth*dpr);const factor=Math.max(1,Math.floor(physicalWidth/960));c.style.width=(960*factor/dpr)+"px";c.style.height=(540*factor/dpr)+"px";}
+window.addEventListener("resize",sizeCanvas);sizeCanvas();document.getElementById("motion").onclick=()=>{motion=(motion+1)%4;idleStart=performance.now();qaTime=null;document.getElementById("motion").textContent="MOTION: "+motionNames[motion]};
+function boot(){if(bad)return;if(I.idle.naturalWidth!==256||I.idle.naturalHeight!==64){s.className="bad";s.textContent="IDLE画像の寸法エラー";return}idleStart=performance.now();s.className="ok";s.textContent="64×64 IDLE 読込OK / 4F・2.6秒周期";requestAnimationFrame(loop)}
+function loop(now){requestAnimationFrame(loop);t++;ctx.clearRect(0,0,960,540);
+ const bg=[I.factory,I.ice,I.forest,I.core,I.arena][scene];ctx.drawImage(bg,0,0,480,270,0,0,960,540);
+ const ln=["factory","ice","forest","core","boss"][scene];
+ ctx.drawImage(I["light_"+ln],0,0,480,270,0,0,960,540);
+ const hm=[I.hero,I.idle,I.dash,I.shot][motion], hc=[8,4,6,8][motion];
+ if(motion===1){sheet(I.idle,4,idleFrameAt(qaTime===null?now-idleStart:qaTime),70,324,128,128)}else{sheet(hm,hc,Math.floor(t/6),70,340,108,108)}
+ let state=Math.floor(t/90)%3;
+ sheet(state===1?I.sa:state===2?I.sh:I.soldier,6,Math.floor(t/7),440,344,108,108);
+ sheet(state===1?I.da:I.drone,6,Math.floor(t/6),335,245,96,96);
+ sheet(state===1?I.ca:I.crawler,8,Math.floor(t/7),555,350,144,108);
+ sheet(state===1?I.bc:state===2?I.bh:I.boss,8,Math.floor(t/6),690,280,268,134);
+ if(state===1){
+ let fw=I.bossflame.naturalWidth/12,fr=Math.floor(t/5)%12;
+ ctx.drawImage(I.bossflame,fr*fw,0,fw,I.bossflame.naturalHeight,805,300,288,120);
+ let cw=I.bcore.naturalWidth/10,cf=Math.floor(t/4)%10;
+ ctx.drawImage(I.bcore,cf*cw,0,cw,I.bcore.naturalHeight,742,278,96,96);
 }
-function draw(){
-  ctx.imageSmoothingEnabled=false;
-  scene();
-  const w=Math.round(img.naturalWidth*scale),h=Math.round(img.naturalHeight*scale);
-  const x=Math.round((c.width-w)/2),y=500-h;
-  ctx.drawImage(img,x,y,w,h);
-  document.getElementById('status').textContent =
-   `OK / source ${img.naturalWidth}×${img.naturalHeight} / display ${w}×${h} / smoothing OFF`;
+ const names=["metal","crash","shield","arc","cryo","phoenix","gravity","photon"];
+ names.forEach((nm,i)=>{let im=I[nm],fw=im.naturalWidth/6,fr=Math.floor(t/5)%6;ctx.drawImage(im,fr*fw,0,fw,im.naturalHeight,35+i*114,112+Math.sin((t+i*5)/14)*6,96,48);
+ if((Math.floor(t/45)+i)%4===0){let fx=I["imp_"+nm],ifw=fx.naturalWidth/10,ifr=Math.floor(t/3)%10;
+ ctx.drawImage(fx,ifr*ifw,0,ifw,fx.naturalHeight,98+i*114,104,64,64);}
+ });
+ ctx.drawImage(I.hud,0,0,960,96);
+ if((Math.floor(t/55)%4)===3){let fw=I.boom.naturalWidth/10,fr=Math.floor(t/4)%10;ctx.drawImage(I.boom,fr*fw,0,fw,I.boom.naturalHeight,570,315,128,128)}
+ ctx.fillStyle="#e9fbff";ctx.font="12px monospace";ctx.fillText("ACTUAL CANVAS v6.2 / scene "+scene+" / frame "+t,12,528);
 }
-img.onload=draw;
-img.onerror=()=>document.getElementById('status').textContent='ERROR: hero.png could not be loaded';
-
-document.querySelectorAll('[data-s]').forEach(b=>b.onclick=()=>{scale=Number(b.dataset.s);draw()});
-document.getElementById('bg').onclick=()=>{bg=(bg+1)%3;draw()};
-</script>
-</main></body></html>
+window.__HDActionQA={frameAt:idleFrameAt,freezeIdle(ms){motion=1;qaTime=ms;document.getElementById("motion").textContent="MOTION: IDLE 64"},resumeIdle(){qaTime=null;idleStart=performance.now()},geometry(){return{frameSize:[64,64],destination:[70,324,128,128],contactBaseline:448,filter:ctx.imageSmoothingEnabled?"smoothed":"point",source:I.idle.src,ready:n===keys.length&&bad===0}}};
+window.addEventListener("error",e=>{s.className="bad";s.textContent="BOOT ERROR: "+e.message+" @ "+e.lineno});
+})();
+</script></body></html>
