@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>HD Action X | Motion Lab</title>
+<style>body{margin:0;background:#0b1020;color:#e8f4ff;font:15px system-ui}main{max-width:800px;margin:auto;padding:16px}h1{font-size:22px}button,input,select{font:inherit}button{background:#153b60;color:white;border:1px solid #6ac9ff;border-radius:7px;padding:9px;margin:4px}canvas{display:block;max-width:100%;background:#20283c;image-rendering:pixelated;border:1px solid #51708a}section{background:#121e32;border-radius:12px;padding:12px;margin:12px 0}.small{font-size:12px;color:#b7c9da}label{display:block;margin:8px 0}input[type=number]{width:68px}input[type=file]{max-width:100%}</style></head><body><main><h1>🎮 HD Action X | Motion Lab</h1><p class="small">既存ゲームとは独立した動作確認ページ。元のindex.htmlや採用済み画像は変更しません。</p>
+<section><label>モーション <select id="mode"><option value="run">RUN（既存素材）</option><option value="dash">DASH（既存素材）</option><option value="jump">JUMP（5ポーズ）</option></select></label>
+<canvas id="cv" width="480" height="320"></canvas><p id="status" class="small"></p>
+<button id="play">⏸ 一時停止</button><button id="prev">◀ 前コマ</button><button id="next">次コマ ▶</button><button id="reset">↻ 最初から</button></section>
+<section><h2>採用CGの読み込み</h2><p class="small">このページでは画像をサーバーに送信しません。端末内でのみプレビューします。JUMPは①〜⑤の各画像を順番に選択。RUN/DASHは横並びスプライトシートを選択できます。</p>
+<label>RUNシート <input id="runFile" type="file" accept="image/*"></label>
+<label>RUN横並びコマ数 <input id="runCount" type="number" min="1" max="100" value="8"></label>
+<label>DASHシート <input id="dashFile" type="file" accept="image/*"></label>
+<label>DASH横並びコマ数 <input id="dashCount" type="number" min="1" max="100" value="6"></label>
+<label>JUMP①〜⑤（複数画像を順番に選択） <input id="jumpFiles" type="file" accept="image/*" multiple></label>
+</section><section><h2>フレーム数調整（30fps換算）</h2><div id="times"></div><p class="small">JUMP初期値は仮設定。監督の最終決定前に固定しません。</p></section></main>
+<script>
+(()=>{'use strict';
+const $=id=>document.getElementById(id),c=$('cv'),ctx=c.getContext('2d');ctx.imageSmoothingEnabled=false;
+const specs={run:{src:'assets/hero_run_approved.png',count:8,frames:[]},dash:{src:'assets/hero_dash_approved.png',count:6,frames:[]},jump:{frames:[]}};
+const duration={run:[6],dash:[6],jump:[3,5,7,5,5]};let mode='run',playing=true,index=0,last=0,elapsed=0;
+function load(src){return new Promise((resolve,reject)=>{let im=new Image();im.onload=()=>resolve(im);im.onerror=reject;im.src=src})}
+async function setSheet(which,src,count){try{const im=await load(src);specs[which].frames=Array.from({length:count},(_,i)=>({im,sx:im.width*i/count,sy:0,sw:im.width/count,sh:im.height}));if(mode===which)reset();render()}catch(e){$('status').textContent=which+' 画像読み込み失敗'}}
+function frameDuration(){let ds=duration[mode];return ds[index]??ds[0]??6}
+function reset(){index=0;elapsed=0;last=0;render()}
+function render(){const w=c.width,h=c.height;ctx.clearRect(0,0,w,h);ctx.fillStyle='#182439';ctx.fillRect(0,0,w,h);ctx.strokeStyle='#54708b';ctx.beginPath();ctx.moveTo(0,270);ctx.lineTo(w,270);ctx.stroke();const arr=specs[mode].frames;const fr=arr[index];if(fr){let scale=Math.min(210/fr.sw,210/fr.sh);let dw=fr.sw*scale,dh=fr.sh*scale;ctx.drawImage(fr.im,fr.sx,fr.sy,fr.sw,fr.sh,(w-dw)/2,270-dh,dw,dh)}else{ctx.fillStyle='#c4d5e6';ctx.font='16px system-ui';ctx.textAlign='center';ctx.fillText('画像を読み込んでください',w/2,h/2)}$('status').textContent=mode.toUpperCase()+' | '+(arr.length?index+1:0)+' / '+arr.length+' | '+frameDuration()+'F / 30fps';}
+function rebuildTimes(){const labels=mode==='jump'?['① 踏み切り','② 上昇','③ 頂点','④ 下降','⑤ 着地']:['各コマ共通'];$('times').replaceChildren();labels.forEach((label,i)=>{let el=document.createElement('label');el.textContent=label+' ';let inp=document.createElement('input');inp.type='number';inp.min=1;inp.max=120;inp.value=duration[mode][i]??6;inp.addEventListener('input',()=>{duration[mode][i]=Math.max(1,Number(inp.value)||1);render()});el.append(inp);$('times').append(el)})}
+$('mode').onchange=e=>{mode=e.target.value;reset();rebuildTimes()};
+$('play').onclick=()=>{playing=!playing;$('play').textContent=playing?'⏸ 一時停止':'▶ 再生'};
+$('prev').onclick=()=>{let n=specs[mode].frames.length;if(n)index=(index+n-1)%n;elapsed=0;render()};
+$('next').onclick=()=>{let n=specs[mode].frames.length;if(n)index=(index+1)%n;elapsed=0;render()};
+$('reset').onclick=reset;
+for(let key of ['run','dash']){$(key+'File').onchange=async e=>{let f=e.target.files[0];if(f)await setSheet(key,URL.createObjectURL(f),Number($(key+'Count').value)||1)};$(key+'Count').onchange=()=>{let f=$(key+'File').files[0];if(f)setSheet(key,URL.createObjectURL(f),Number($(key+'Count').value)||1)}}
+$('jumpFiles').onchange=async e=>{let files=[...e.target.files].slice(0,5);let frames=[];for(let f of files){try{let im=await load(URL.createObjectURL(f));frames.push({im,sx:0,sy:0,sw:im.width,sh:im.height})}catch{}}specs.jump.frames=frames;reset()};
+function tick(now){if(last&&playing){elapsed+=(now-last)*30/1000;let arr=specs[mode].frames;if(arr.length){while(elapsed>=frameDuration()){elapsed-=frameDuration();index=(index+1)%arr.length;render()}}}last=now;requestAnimationFrame(tick)}
+setSheet('run',specs.run.src,8);setSheet('dash',specs.dash.src,6);rebuildTimes();requestAnimationFrame(tick);
+})();
+</script></body></html>
